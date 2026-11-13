@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حاسبة العملات العالمية</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --text-secondary: #64748b;
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --border-color: #e2e8f0;
+            --input-bg: #f1f5f9;
+        }
+
+        :root.dark-mode {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary-color: #60a5fa;
+            --primary-hover: #3b82f6;
+            --border-color: #334155;
+            --input-bg: #0f172a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 480px;
+            padding: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 10px;
+        }
+
+        .header h1 { font-size: 1.4rem; font-weight: 700; }
+
+        .theme-toggle {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .converter-group { margin-bottom: 20px; }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .input-row { display: flex; gap: 10px; }
+
+        input, select {
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input { flex: 1; min-width: 0; }
+        input:focus, select:focus { border-color: var(--primary-color); }
+
+        select { flex: 0 0 50%; max-width: 200px; min-width: 0; cursor: pointer; }
+
+        .swap-btn-container { display: flex; justify-content: center; margin: 10px 0; }
+
+        .swap-btn {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--primary-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .swap-btn:hover {
+            transform: scale(1.1);
+            background-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .result-box {
+            background-color: var(--input-bg);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 25px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .rate-info { font-size: 0.9rem; color: var(--text-secondary); }
+        .rate-info.main { color: var(--primary-color); font-weight: 600; font-size: 1rem; }
+        .note { font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>حاسبة العملات</h1>
+            <button class="theme-toggle" id="themeToggle">🌙 الوضع الليلي</button>
+        </div>
+
+        <div class="converter-group">
+            <label for="amount">المبلغ</label>
+            <div class="input-row">
+                <input type="number" id="amount" value="1" min="0" step="any" inputmode="decimal">
+                <select id="fromCurrency" aria-label="من عملة"></select>
+            </div>
+        </div>
+
+        <div class="swap-btn-container">
+            <button class="swap-btn" id="swapBtn" title="تبديل العملات" aria-label="تبديل العملات">🔄</button>
+        </div>
+
+        <div class="converter-group">
+            <label for="resultAmount">النتيجة</label>
+            <div class="input-row">
+                <input type="text" id="resultAmount" readonly>
+                <select id="toCurrency" aria-label="إلى عملة"></select>
+            </div>
+        </div>
+
+        <div class="result-box">
+            <div id="exchangeRateText" class="rate-info main"></div>
+            <div class="note">الأسعار تقريبية وثابتة وللاستئناس فقط، وليست أسعارًا حية.</div>
+        </div>
+    </div>
+
+    <script>
+        // أسعار تقريبية بالنسبة للدولار الأمريكي (1 USD = rate)
+        const currencies = {
+            USD: { name: "الدولار الأمريكي", rate: 1.0 },
+            EUR: { name: "اليورو الأوروبي", rate: 0.92 },
+            GBP: { name: "الجنيه الإسترليني", rate: 0.79 },
+            JOD: { name: "الدينار الأردني", rate: 0.709 },
+            SAR: { name: "الريال السعودي", rate: 3.75 },
+            AED: { name: "الدرهم الإماراتي", rate: 3.67 },
+            KWD: { name: "الدينار الكويتي", rate: 0.31 },
+            QAR: { name: "الريال القطري", rate: 3.64 },
+            BHD: { name: "الدينار البحريني", rate: 0.376 },
+            OMR: { name: "الريال العماني", rate: 0.385 },
+            EGP: { name: "الجنيه المصري", rate: 49.5 },
+            IQD: { name: "الدينار العراقي", rate: 1310 },
+            MAD: { name: "الدرهم المغربي", rate: 10.1 },
+            TND: { name: "الدينار التونسي", rate: 3.12 },
+            DZD: { name: "الدينار الجزائري", rate: 134.5 },
+            LBP: { name: "الليرة اللبنانية", rate: 89500 },
+            TRY: { name: "الليرة التركية", rate: 36.2 },
+            JPY: { name: "الين الياباني", rate: 152.0 },
+            CNY: { name: "اليوان الصيني", rate: 7.25 },
+            INR: { name: "الروبية الهندية", rate: 83.2 },
+            CAD: { name: "الدولار الكندي", rate: 1.38 },
+            AUD: { name: "الدولار الأسترالي", rate: 1.52 },
+            CHF: { name: "الفرنك السويسري", rate: 0.88 },
+            SEK: { name: "الكرونة السويدية", rate: 10.6 },
+            NZD: { name: "الدولار النيوزيلندي", rate: 1.65 },
+            SGD: { name: "الدولار السنغافوري", rate: 1.35 },
+            ZAR: { name: "الراند الجنوب أفريقي", rate: 18.2 },
+            BRL: { name: "الريال البرازيلي", rate: 5.7 },
+            MXN: { name: "البيزو المكسيكي", rate: 20.4 },
+            KRW: { name: "الوون الكوري الجنوبي", rate: 1380 }
+        };
+
+        const amountInput = document.getElementById('amount');
+        const fromCurrencySelect = document.getElementById('fromCurrency');
+        const toCurrencySelect = document.getElementById('toCurrency');
+        const resultAmountInput = document.getElementById('resultAmount');
+        const swapBtn = document.getElementById('swapBtn');
+        const exchangeRateText = document.getElementById('exchangeRateText');
+        const themeToggle = document.getElementById('themeToggle');
+
+        const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 });
+
+        function populateDropdowns() {
+            Object.keys(currencies).forEach(code => {
+                const label = `${code} - ${currencies[code].name}`;
+                [fromCurrencySelect, toCurrencySelect].forEach(sel => {
+                    const opt = document.createElement('option');
+                    opt.value = code;
+                    opt.textContent = label;
+                    sel.appendChild(opt);
+                });
+            });
+            fromCurrencySelect.value = 'USD';
+            toCurrencySelect.value = 'JOD';
+        }
+
+        function convert() {
+            const amount = Math.max(parseFloat(amountInput.value) || 0, 0);
+            const from = fromCurrencySelect.value;
+            const to = toCurrencySelect.value;
+
+            const singleRate = currencies[to].rate / currencies[from].rate;
+            resultAmountInput.value = fmt.format(amount * singleRate);
+            exchangeRateText.textContent = `1 ${from} = ${fmt.format(singleRate)} ${to}`;
+        }
+
+        swapBtn.addEventListener('click', () => {
+            const temp = fromCurrencySelect.value;
+            fromCurrencySelect.value = toCurrencySelect.value;
+            toCurrencySelect.value = temp;
+            convert();
+        });
+
+        themeToggle.addEventListener('click', () => {
+            const dark = document.documentElement.classList.toggle('dark-mode');
+            themeToggle.textContent = dark ? '☀️ الوضع النهاري' : '🌙 الوضع الليلي';
+        });
+
+        amountInput.addEventListener('input', convert);
+        fromCurrencySelect.addEventListener('change', convert);
+        toCurrencySelect.addEventListener('change', convert);
+
+        populateDropdowns();
+        convert();
+    </script>
+</body>
+  </html>
